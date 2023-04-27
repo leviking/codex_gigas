@@ -1,0 +1,22 @@
+[package]
+name = "codex_gigas"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hyper = "0.14"
+tokio = { version = "1", features = ["full"] }
+serde = "1.0"
+serde_json = "1.0"
+multipart = "0.17"
+hyper-tungstenite = "0.9.0"
+tokio-tungstenite = "0.18.0"
+actix = "0.13.0"
+actix-files = "0.6.2"
+actix-multipart = "0.6.0"
+actix-web = "4.3.1"
+futures = "0.3.28"
+base64 = "0.21.0"
+futures-util = "0.3.28"
