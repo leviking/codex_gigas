@@ -7,7 +7,7 @@ env:
   IMAGE_TAG: latest
   AWS_ACCOUNT_ID: "139294524816"
   PRIMARY_BRANCH: "deployment-cloud-3"
-  PROJECT_NAME: "codex_gigas"
+  PROJECT_NAME: "codex-gigas"
   ENVIRONMENT: "foo"
 
 jobs:
@@ -67,5 +67,5 @@ jobs:
     # Force the service to redeploy the task so that it picks up the new latest image
     - name: Update ECS Service
       run: |
-        aws ecs update-service --cluster ${{ env.PROJECT_NAME }} --service ${{ env.PROJECT_NAME }} --force-new-deployment --region ${{ env.AWS_REGION }}
+        aws ecs update-service --cluster "${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}" --service "${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}" --force-new-deployment --region ${{ env.AWS_REGION }}
       shell: bash
