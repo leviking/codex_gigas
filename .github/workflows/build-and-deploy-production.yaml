@@ -1,14 +1,14 @@
 name: codex_gigas build & deploy
 on:
   push:
-
+    branches:
+      - master
 env:
   AWS_REGION: "us-east-1"
-  IMAGE_TAG: latest
-  AWS_ACCOUNT_ID: "139294524816"
-  PRIMARY_BRANCH: "deployment-cloud-3"
+  AWS_ACCOUNT_ID: "296807674405"
+  PRIMARY_BRANCH: "master"
   PROJECT_NAME: "codex-gigas"
-  ENVIRONMENT: "foo"
+  ENVIRONMENT: "production"
 
 jobs:
   build-and-deploy:
@@ -37,6 +37,7 @@ jobs:
 
     - name: Build and Push image
       run: |
+        IMAGE_TAG=dev
         PRIMARY_BRANCH=${{ env.PRIMARY_BRANCH }}
         branch_name=${GITHUB_REF##*/}
         echo "The branch name: $branch_name"
@@ -55,11 +56,13 @@ jobs:
 
         if [ $PRIMARY_BRANCH = $branch_name ];
         then
-            # tag the image as latest and push the image
+            # tag the image as lates if we're in the primary branch
+            IMAGE_TAG="latest"           
+        fi
             docker tag $REGISTRY/$REPOSITORY:$SHORT_SHA $REGISTRY/$REPOSITORY:$IMAGE_TAG
             echo "pushing image: $REGISTRY/$REPOSITORY:$IMAGE_TAG"    
             docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-        fi
+
       shell: bash
       env:
         REGISTRY: "${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
