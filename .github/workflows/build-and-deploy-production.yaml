@@ -1,0 +1,74 @@
+name: codex_gigas build & deploy
+on:
+  push:
+    branches:
+      - master
+env:
+  AWS_REGION: "us-east-1"
+  AWS_ACCOUNT_ID: "296807674405"
+  PRIMARY_BRANCH: "master"
+  PROJECT_NAME: "codex-gigas"
+  ENVIRONMENT: "production"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write #allows using the token
+      contents: read  #allows reading git repo    
+
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@v3
+
+    - name: Get branch name
+      run: echo running on branch ${GITHUB_REF##*/}
+      id: extract_branch
+
+    - name: Add SHORT_SHA environment variable with commit short sha
+      run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV     
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-github-actions
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Build and Push image
+      run: |
+        IMAGE_TAG=dev
+        PRIMARY_BRANCH=${{ env.PRIMARY_BRANCH }}
+        branch_name=${GITHUB_REF##*/}
+        echo "The branch name: $branch_name"
+
+        REPOSITORY=${GITHUB_REPOSITORY#*/}
+
+        echo "Logging into ECR"
+        aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+        docker login --username AWS --password-stdin $REGISTRY
+
+        # build image
+        echo "Begin building $REPOSITORY:$SHORT_SHA"
+        docker build -t $REGISTRY/$REPOSITORY:$SHORT_SHA .
+        echo "pushing image: $REGISTRY/$REPOSITORY:$SHORT_SHA"
+        docker push $REGISTRY/$REPOSITORY:$SHORT_SHA
+
+        if [ $PRIMARY_BRANCH = $branch_name ];
+        then
+            # tag the image as lates if we're in the primary branch
+            IMAGE_TAG="latest"           
+        fi
+            docker tag $REGISTRY/$REPOSITORY:$SHORT_SHA $REGISTRY/$REPOSITORY:$IMAGE_TAG
+            echo "pushing image: $REGISTRY/$REPOSITORY:$IMAGE_TAG"    
+            docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+
+      shell: bash
+      env:
+        REGISTRY: "${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+
+    # Force the service to redeploy the task so that it picks up the new latest image
+    - name: Update ECS Service
+      run: |
+        aws ecs update-service --cluster "${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}" --service "${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}" --force-new-deployment --region ${{ env.AWS_REGION }}
+      shell: bash
